@@ -1,5 +1,5 @@
 {
-  "description": "Placeholder profile.",
+  "description": "Default profile for product-match. Uses ensemble voting for accurate rankings.",
   "changelog": null,
   "tasks": [
     {

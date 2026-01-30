@@ -1,11 +1,43 @@
 {
-  "type": "scalar.function",
-  "input_maps": null,
-  "description": "Placeholder function.",
+  "type": "vector.function",
+  "description": "Product Match Ranking. Given a customer need and a list of products, rank products by how well they match the stated need.",
   "changelog": null,
   "input_schema": {
-    "type": "integer"
+    "type": "object",
+    "properties": {
+      "need": {
+        "type": "string",
+        "description": "The customer's requirement, need, or search intent."
+      },
+      "products": {
+        "type": "array",
+        "description": "Products to rank by match quality.",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Product name or title."
+            },
+            "description": {
+              "type": "string",
+              "description": "Product description or details."
+            }
+          },
+          "required": [
+            "name",
+            "description"
+          ]
+        }
+      }
+    },
+    "required": [
+      "need",
+      "products"
+    ]
   },
+  "input_maps": null,
   "tasks": [
     {
       "type": "vector.completion",
@@ -15,25 +47,26 @@
         {
           "role": "user",
           "content": {
-            "$jmespath": "join('',['How much do you like the number ',to_string(input),'?'])"
+            "$jmespath": "join('', ['A customer is looking for: \"', input.need, '\"\n\nWhich of the following products best matches their need?\n\n', join('\n', input.products[].join('', ['- ', name, ': ', description]))])"
           }
         }
       ],
       "tools": null,
-      "responses": [
-        {
-          "$jmespath": "join('',['I REALLY LOVE the number ',to_string(input),'!'])"
-        },
-        {
-          "$jmespath": "join('',['Meh, ',to_string(input),' is okay I guess.'])"
-        },
-        {
-          "$jmespath": "join('',['I HATE the number ',to_string(input),'!'])"
-        }
-      ]
+      "responses": {
+        "$jmespath": "input.products[].name"
+      }
     }
   ],
   "output": {
-    "$jmespath": "add(tasks[0].scores[0],multiply(tasks[0].scores[1],`0.5`))"
+    "$jmespath": "tasks[0].scores"
+  },
+  "output_length": {
+    "$jmespath": "length(input.products)"
+  },
+  "input_split": {
+    "$jmespath": "zip_map(&{need:@[0],products:[@[1]]}, [repeat(input.need, length(input.products)), input.products])"
+  },
+  "input_merge": {
+    "$jmespath": "@.{need:input[0].need, products:input[].products[0]}"
   }
 }
