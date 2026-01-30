@@ -5,7 +5,7 @@ export const Function: Functions.RemoteFunction = {
   type: "vector.function",
   description:
     "Product Match Ranking. Given a customer need and a list of products, rank products by how well they match the stated need.",
-  changelog: null,
+  changelog: "Added system message for improved evaluation guidance and consistency.",
   input_schema: {
     type: "object",
     properties: {
@@ -26,7 +26,7 @@ export const Function: Functions.RemoteFunction = {
             },
             description: {
               type: "string",
-              description: "Product description or details.",
+              description: "Product description or details. Can include price, specs, and features.",
             },
           },
           required: ["name", "description"],
@@ -43,10 +43,15 @@ export const Function: Functions.RemoteFunction = {
       map: null,
       messages: [
         {
+          role: "system",
+          content:
+            "You are a product matching expert. Evaluate how well each product matches the customer's stated need. Consider: 1) Direct feature alignment, 2) Price constraints if mentioned, 3) Category relevance, 4) Overall suitability. Select the product that BEST matches.",
+        },
+        {
           role: "user",
           content: {
             $jmespath:
-              "join('', ['A customer is looking for: \"', input.need, '\"\n\nWhich of the following products best matches their need?\n\n', join('\n', input.products[].join('', ['- ', name, ': ', description]))])",
+              "join('', ['Customer need: \"', input.need, '\"\n\nProducts:\n\n', join('\n\n', input.products[].join('', ['- ', name, ': ', description]))])",
           },
         },
       ],
