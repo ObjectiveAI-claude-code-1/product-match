@@ -1,0 +1,39 @@
+{
+  "type": "scalar.function",
+  "input_maps": null,
+  "description": "Placeholder function.",
+  "changelog": null,
+  "input_schema": {
+    "type": "integer"
+  },
+  "tasks": [
+    {
+      "type": "vector.completion",
+      "skip": null,
+      "map": null,
+      "messages": [
+        {
+          "role": "user",
+          "content": {
+            "$jmespath": "join('',['How much do you like the number ',to_string(input),'?'])"
+          }
+        }
+      ],
+      "tools": null,
+      "responses": [
+        {
+          "$jmespath": "join('',['I REALLY LOVE the number ',to_string(input),'!'])"
+        },
+        {
+          "$jmespath": "join('',['Meh, ',to_string(input),' is okay I guess.'])"
+        },
+        {
+          "$jmespath": "join('',['I HATE the number ',to_string(input),'!'])"
+        }
+      ]
+    }
+  ],
+  "output": {
+    "$jmespath": "add(tasks[0].scores[0],multiply(tasks[0].scores[1],`0.5`))"
+  }
+}

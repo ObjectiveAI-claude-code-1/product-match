@@ -1,0 +1,115 @@
+import { ExampleInputs } from "./defs";
+import { ObjectiveAI, Functions, Vector } from "objectiveai";
+import { execSync } from "child_process";
+import "dotenv/config";
+
+function validateNoUncommittedChanges(): void {
+  const status = execSync("git status --porcelain", {
+    encoding: "utf-8",
+  }).trim();
+
+  if (status) {
+    throw new Error(
+      `Cannot publish with uncommitted changes:\n${status}\n\nPlease commit your changes first.`,
+    );
+  }
+}
+
+function validateSyncedWithRemote(): void {
+  // Fetch latest from remote
+  execSync("git fetch", { encoding: "utf-8" });
+
+  const local = execSync("git rev-parse HEAD", { encoding: "utf-8" }).trim();
+  const remote = execSync("git rev-parse @{upstream}", {
+    encoding: "utf-8",
+  }).trim();
+
+  if (local !== remote) {
+    throw new Error(
+      `Local branch is not in sync with remote.\nLocal: ${local}\nRemote: ${remote}\n\nPlease push or pull to sync with the remote.`,
+    );
+  }
+}
+
+function validateGitHubRemote(): void {
+  const remoteUrl = execSync("git remote get-url origin", {
+    encoding: "utf-8",
+  }).trim();
+
+  if (!remoteUrl.includes("github.com")) {
+    throw new Error(`Remote must be a GitHub repository.\nGot: ${remoteUrl}`);
+  }
+}
+
+function getGitUpstream(): { owner: string; repository: string } {
+  const remoteUrl = execSync("git remote get-url origin", {
+    encoding: "utf-8",
+  }).trim();
+
+  // Handle SSH format: git@github.com:owner/repo.git
+  const sshMatch = remoteUrl.match(/git@[^:]+:([^/]+)\/(.+?)(?:\.git)?$/);
+  if (sshMatch) {
+    return { owner: sshMatch[1], repository: sshMatch[2] };
+  }
+
+  // Handle HTTPS format: https://github.com/owner/repo.git
+  const httpsMatch = remoteUrl.match(
+    /https?:\/\/[^/]+\/([^/]+)\/(.+?)(?:\.git)?$/,
+  );
+  if (httpsMatch) {
+    return { owner: httpsMatch[1], repository: httpsMatch[2] };
+  }
+
+  throw new Error(`Unable to parse git remote URL: ${remoteUrl}`);
+}
+
+async function execute(
+  objectiveai: ObjectiveAI,
+  input: Functions.Expression.InputValue,
+  owner: string,
+  repository: string,
+  index: number,
+): Promise<number> {
+  const response = await Functions.Executions.remoteFunctionRemoteProfileCreate(
+    objectiveai,
+    owner,
+    repository,
+    null,
+    owner,
+    repository,
+    null,
+    {
+      input,
+    },
+  );
+  if (Vector.Completions.Response.Usage.isEmpty(response.usage)) {
+    throw new Error(
+      `Function execution was usage-free for input ${JSON.stringify(input)}. Unable to publish Function & Profile without usage.`,
+    );
+  }
+  const totalCostFormatted = new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 6,
+  }).format(response.usage.total_cost);
+  console.log(`Execution ${index} Cost: ${totalCostFormatted}`);
+  return response.usage.total_cost;
+}
+
+async function main(): Promise<void> {
+  validateNoUncommittedChanges();
+  validateSyncedWithRemote();
+  validateGitHubRemote();
+
+  const objectiveai = new ObjectiveAI({
+    apiBase: process.env.ONLY_SET_IF_YOU_KNOW_WHAT_YOURE_DOING,
+  });
+  const { owner, repository } = getGitUpstream();
+  execute(objectiveai, ExampleInputs[0].value, owner, repository, 1);
+  console.log("Function & Profile published successfully.");
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

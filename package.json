@@ -1,0 +1,23 @@
+{
+  "name": "objectiveai-function",
+  "version": "1.0.0",
+  "main": "main.ts",
+  "scripts": {
+    "init": "ts-node init.ts",
+    "start": "ts-node main.ts",
+    "test": "ts-node test.ts",
+    "build": "ts-node build.ts && npm run test",
+    "publish": "npm run build && ts-node publish.ts"
+  },
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/node": "^25.0.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "objectiveai": "file:./objectiveai/objectiveai-js",
+    "zod": "^4.3.5"
+  }
+}
