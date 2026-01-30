@@ -1,73 +1,95 @@
-# ObjectiveAI Function Sandbox
+# product-match
 
-A sandbox environment for creating ObjectiveAI Functions and Profiles.
+An [ObjectiveAI](https://objective-ai.io) vector function that ranks products by how well they match a customer's stated need.
 
-[GitHub](https://github.com/ObjectiveAI/objectiveai) | [Website](https://objective-ai.io) | [Discord](https://discord.gg/gbNFHensby)
+## Overview
 
-## What is this?
+Given a customer's requirement and a list of products, this function returns normalized scores indicating how well each product matches the need. Uses ensemble LLM voting across 5 models for accurate, balanced rankings.
 
-This repository is a template workspace for inventing new ObjectiveAI **Functions** (scoring/ranking pipelines) and **Profiles** (learned weights).
+## Input Schema
 
-It includes a **Claude Code skill** (`~/.claude/skills/invent/SKILL.md`) that guides Claude through the entire process of inventing a new Function from scratch - from studying examples to validating the new Function/Profile pair to publishing on GitHub.
+```json
+{
+  "need": "string - The customer's requirement or search intent",
+  "products": [
+    {
+      "name": "string - Product name/title",
+      "description": "string - Product description (can include price, specs, features)"
+    }
+  ]
+}
+```
 
-The sandbox provides all the tooling needed to:
+## Output
 
-- Define a Function and Profile in TypeScript
-- Validate against the ObjectiveAI schema
-- Test with example inputs
-- Export to `function.json` and `profile.json`
-- Publish to GitHub and the ObjectiveAI index
+Array of scores (one per product) that sum to ~1, representing relative match quality.
 
-## Quick Start
+## Example
+
+**Input:**
+```json
+{
+  "need": "A lightweight laptop for frequent travel with long battery life",
+  "products": [
+    {
+      "name": "MacBook Air M3",
+      "description": "13.6-inch Retina display, M3 chip, 1.24kg, 18-hour battery life, fanless design"
+    },
+    {
+      "name": "Dell XPS 15",
+      "description": "15.6-inch OLED display, Intel Core i7, 1.86kg, 13-hour battery, powerful GPU"
+    },
+    {
+      "name": "Lenovo ThinkPad X1 Carbon",
+      "description": "14-inch display, Intel Core Ultra, 1.12kg, 15-hour battery, military-grade durability"
+    }
+  ]
+}
+```
+
+**Output:**
+```json
+[0.35, 0.25, 0.40]
+```
+*(Scores vary based on LLM ensemble voting)*
+
+## Ensemble Configuration
+
+The function uses 5 LLMs with equal voting weights:
+
+| Model | Output Mode | Features |
+|-------|-------------|----------|
+| `openai/gpt-4.1-nano` | JSON schema | Fast, structured |
+| `google/gemini-2.5-flash-lite` | JSON schema | Fast, structured |
+| `x-ai/grok-4.1-fast` | JSON schema | Reasoning disabled |
+| `openai/gpt-4o-mini` | JSON schema | Logprobs enabled |
+| `deepseek/deepseek-v3.2` | Instruction | Logprobs enabled |
+
+## Execution Strategies
+
+- **Default Strategy**: All products evaluated simultaneously
+- **SwissSystem Strategy**: Tournament-style pairwise comparisons for large product lists
+
+## Development
 
 ```bash
+# Install dependencies
 npm install
-npm run init      # Fetch example functions/profiles
-npm run build     # Validate, test, and export
-npm run publish   # (Optional) Index on ObjectiveAI
+
+# Run tests
+npm run build
+
+# Run experiment script
+npm run start
 ```
 
-## Project Structure
+## Files
 
-```
-├── defs.ts           # Define your Function, Profile, and ExampleInputs here
-├── main.ts           # Scratchpad for experiments (npm run start)
-├── build.ts          # Exports Function/Profile to JSON (readonly)
-├── test.ts           # Validates and tests everything (readonly)
-├── init.ts           # Fetches example functions/profiles (readonly)
-├── publish.ts        # Publishes to ObjectiveAI index (readonly)
-├── example_input.ts  # ExampleInput type definition (readonly)
-├── function.json     # Generated Function output
-├── profile.json      # Generated Profile output
-├── examples/         # Downloaded example functions/profiles
-└── objectiveai/      # ObjectiveAI SDK (git submodule)
-```
+- `function.json` - Exported function definition
+- `profile.json` - Exported ensemble profile
+- `defs.ts` - Source definitions (Function, Profile, ExampleInputs)
+- `main.ts` - Experiment scratchpad
 
-## Workflow
+## License
 
-1. **Study examples** - Run `npm run init` to download example functions/profiles, then explore `examples/`
-2. **Define your Function** - Edit `defs.ts` to create your Function with tasks and output expressions
-3. **Define your Profile** - Add a Profile that specifies ensembles and weights for each task
-4. **Create ExampleInputs** - Add 10 diverse test inputs covering edge cases
-5. **Build and test** - Run `npm run build` to validate and export
-6. **Publish** - Push to GitHub, optionally run `npm run publish` to index
-
-## Scripts
-
-| Command | Description |
-|---------|-------------|
-| `npm run start` | Run the scratchpad (`main.ts`) for experiments |
-| `npm run init` | Fetch example functions/profiles into `examples/` |
-| `npm run build` | Validate, test, and export to JSON |
-| `npm run test` | Run validation tests only |
-| `npm run publish` | Publish to ObjectiveAI index (requires API key) |
-
-## Using with Claude Code
-
-This sandbox includes a skill for Claude Code. To have Claude invent a new Function:
-
-1. Open this workspace in Claude Code
-2. Ask Claude to invent a new function (the skill will guide the process)
-3. Claude will study examples, propose ideas, and implement the Function/Profile
-
-The skill supports both **collaborative** (back-and-forth) and **autonomous** modes.
+MIT
